@@ -11,6 +11,9 @@
 #define I 0
 #define J 1
 
+#define N 5
+#define M 6
+
 using namespace std;
 
 struct joaninha{
@@ -100,25 +103,24 @@ void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double
 }
 
 double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
-	int x1 = m[i][j].euclidian[X];
-	int y1 = m[i][j].euclidian[Y];
-  	int x2 = m[k][l].euclidian[X];
-	int y2 = m[k][l].euclidian[Y];
+	double x1 = m[i][j].euclidian[X];
+	double y1 = m[i][j].euclidian[Y];
+  	double x2 = m[k][l].euclidian[X];
+	double y2 = m[k][l].euclidian[Y];
 
-	return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
+	return abs((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
 double temp_hex(Hexa** m, int altura, int largura, int i, int j, double cte){
-	Hexa h = m[i][j];
 	double temp_h = 0;
 	for(int k = 0; k < altura; k++){
 		for(int l = 0; l < largura; l++){
-			if(k != i && l != j ){
+			if(!(k == i && l == j)){
 				double d = dist_euclidiana(m, i, j, k, l);
 				if(m[k][l].joaninha || m[k][l].calor){
 					temp_h += cte/d;
 				}
-				else if(m[k][k].frio)
+				else if(m[k][l].frio)
 					temp_h -= cte/d;
 			}
 		}
@@ -130,20 +132,20 @@ double temp_hex(Hexa** m, int altura, int largura, int i, int j, double cte){
 void print_temps(Hexa** m, int altura, int largura){
 	for(int i = 0; i < altura; i++){
 		for(int j = 0; j < largura; j++)
-			printf("%.2lf ", m[i][j].temperatura);
+			printf("%+.2le ", m[i][j].temperatura);
 		printf("\n");
 	}
 }
 
 int main(int arg, char** argv){
-	Hexa **matriz = init_grid(5,5);
-	coloca_joaninha(matriz, 5, 5, 10);
-	coloca_fonte(matriz, 5, 5, 0.3, 2, 10);
-	coloca_fonte(matriz, 5, 5, 0.5, 2, -10);
-	print_matrix(matriz, 5,5);
-	for(int i; i < 5; i ++)
-		for(int j; j < 5; j++)
-			temp_hex(matriz, 5, 5, i, j, 10);
-	print_temps(matriz, 5, 5);
+	Hexa **matriz = init_grid(N, M);
+	coloca_joaninha(matriz, N, M, 10);
+	coloca_fonte(matriz, N, M, 0.3, 2, 10);
+	coloca_fonte(matriz, N, M, 0.5, 2, -10);
+	print_matrix(matriz, N, M);
+	for(int i = 0; i < N; i++)
+		for(int j = 0; j < M; j++)
+			temp_hex(matriz, N, M, i, j, 10);
+	print_temps(matriz, N, M);
 	return 0;
 }
