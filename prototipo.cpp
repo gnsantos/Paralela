@@ -21,6 +21,14 @@
 #define N 3
 #define M 3
 
+
+const char EMPTY = ' ';
+const char JOANINHA = 'J';
+const char CALOR = '+';
+const char FRIO = '-';
+const char LEFT_DEL = '(';
+const char RIGHT_DEL = ')';
+
 using namespace std;
 
 struct joaninha{
@@ -158,9 +166,10 @@ void print_temps(Hexa** m, int altura, int largura){
 
 
 void move_joaninha(Hexa** m, int alt, int lar, int index){
-  Joaninha jojo = joanas[index];
+  Joaninha* jojo = joanas[index];
   int i = jojo->pos_i, j = jojo->pos_j; 
-  Hexa cel_j = m[i][j], v[6];
+  Hexa cel_j = m[i][j];
+  Hexa v[6];
   Hexa dest = cel_j;
   double temp_atual = cel_j.temperatura;
   
@@ -193,8 +202,10 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
     }
   }
   
-  if(dest != cel_j)
-    dest.list.push_back(jojo); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
+  if(dest != cel_j){
+    Joaninha* hue = jojo;
+    dest.list.push_back(hue); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
+  }
 
 }
 
@@ -203,7 +214,7 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
     move_joaninha(m, alt, lar, i);
   
   double diff = -1;
-  Joaninha escolhida = NULL;
+  Joaninha* escolhida = NULL;
 
   for(int i = 0; i < alt; i++){ //itera em todos os hexagonos
     for(int j = 0; j < lar; j++){
@@ -234,6 +245,128 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
 
 }
 
+void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
+  // Cuidado, coordenadas x y são invertidas para printar
+  int m = mapWidth*4+2;
+  int n = mapHeight*7 + 3;
+        
+  //reen = new char[m][n];
+  char** screen = new char*[m];
+  for (int i = 0; i < m; i++){
+    screen[i] = new char[n];
+  }
+		
+  int i = 0;
+  int j = 0;
+  int x = 0;
+  int y = 0;
+  char a;
+        
+  // Inicializa a matriz
+  // Trocar por std::fill quando possível
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      screen[i][j] = EMPTY;
+    }
+  }
+  for (i = 0; i < m; i++) {
+    if (i%4 == 0) {
+      j = 0;
+      while (j < n-3) {
+	screen[i][j] = '\\';
+	j += 8;
+	screen[i][j] = '/';
+	j += 6;
+      }
+      screen[i][j] = '\\';
+    }
+    if (i%4 == 1) {
+      j = 1;
+      while (j < n-2) {
+	screen[i][j] = '\\';
+	for (int k = 1; k < 6; k++){
+	  screen[i][j+k] = '_';
+	}
+	j += 6;
+	screen[i][j] = '/';
+	j += 8;
+      }
+      screen[i][j] = '\\';
+    }
+    if (i%4 == 2) {
+      j = 1;
+      while (j < n-2) {
+	screen[i][j] = '/';
+	j += 6;
+	screen[i][j] = '\\';
+	j += 8;
+      }
+      screen[i][j] = '/';
+    }
+    if (i%4 == 3) {
+      j = 0;
+      while (j < n-3) {
+	screen[i][j] = '/';
+	j += 8;
+	screen[i][j] = '\\';
+	for (int k = 1; k < 6; k++){
+	  screen[i][j+k] = '_';
+	}
+	j += 6;
+      }
+      screen[i][j] = '/';
+    }
+  }
+
+
+  // Printa joaninhas/fontes
+		
+  for (j = 0; j < mapHeight; j++){
+    for (i = 0; i < mapWidth; i++){
+      y = j*7;
+      x = i*4;
+      if (j%2 == 0) x += 2;
+      if (matriz[j][i].joaninha){
+	screen[x + 1][y + 3] = LEFT_DEL;
+	screen[x + 1][y + 4] = JOANINHA;
+	screen[x + 1][y + 5] = RIGHT_DEL;
+      }
+      else if (matriz[j][i].frio){
+	screen[x + 1][y + 3] = LEFT_DEL;
+	screen[x + 1][y + 4] = FRIO;
+	screen[x + 1][y + 5] = RIGHT_DEL;
+      }
+      else if (matriz[j][i].calor){
+	screen[x + 1][y + 3] = LEFT_DEL;
+	screen[x + 1][y + 4] = CALOR;
+	screen[x + 1][y + 5] = RIGHT_DEL;
+      }
+      // else{
+      // 	screen[x + 1][y + 3] = LEFT_DEL;
+      // 	screen[x + 1][y + 4] = EMPTY;
+      // 	screen[x + 1][y + 5] = RIGHT_DEL;
+      // }
+				
+    }
+  }
+  // Remove pontas
+  screen[0][0] = EMPTY;
+  screen[1][1] = EMPTY;
+  screen[m-1][n-2] = EMPTY;
+  screen[m-2][n-3] = EMPTY;
+		
+  // Printa resultado
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      cout << screen[i][j];
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
+
+
+
 int main(int arg, char** argv){
   Hexa **matriz = init_grid(N, M);
   
@@ -249,14 +382,14 @@ int main(int arg, char** argv){
   
   
   /*matriz[0][0].joaninha = false; matriz[0][0].calor = false; matriz[0][0].frio = true;
-  matriz[0][1].joaninha = false; matriz[0][1].calor = true; matriz[0][1].frio = false;
-  matriz[0][2].joaninha = false; matriz[0][2].calor = false; matriz[0][2].frio = false;
-  matriz[1][0].joaninha = false; matriz[1][0].calor = true; matriz[1][0].frio = false;
-  matriz[1][1].joaninha = true; matriz[1][1].calor = false; matriz[1][1].frio = false;
-  matriz[1][2].joaninha = false; matriz[1][2].calor = false; matriz[1][2].frio = true;
-  matriz[2][0].joaninha = false; matriz[2][0].calor = false; matriz[2][0].frio = true;
-  matriz[2][1].joaninha = false; matriz[2][1].calor = true; matriz[2][1].frio = false;
-  matriz[2][2].joaninha = false; matriz[2][2].calor = false; matriz[2][2].frio = false;
+    matriz[0][1].joaninha = false; matriz[0][1].calor = true; matriz[0][1].frio = false;
+    matriz[0][2].joaninha = false; matriz[0][2].calor = false; matriz[0][2].frio = false;
+    matriz[1][0].joaninha = false; matriz[1][0].calor = true; matriz[1][0].frio = false;
+    matriz[1][1].joaninha = true; matriz[1][1].calor = false; matriz[1][1].frio = false;
+    matriz[1][2].joaninha = false; matriz[1][2].calor = false; matriz[1][2].frio = true;
+    matriz[2][0].joaninha = false; matriz[2][0].calor = false; matriz[2][0].frio = true;
+    matriz[2][1].joaninha = false; matriz[2][1].calor = true; matriz[2][1].frio = false;
+    matriz[2][2].joaninha = false; matriz[2][2].calor = false; matriz[2][2].frio = false;
   */
 
   print_matrix(matriz, N, M);
@@ -264,10 +397,12 @@ int main(int arg, char** argv){
   atualiza_temps(matriz, N, M, TEMP_FONTE);
  
   print_temps(matriz, N, M);
+
+  init_Screen(N,M,matriz);
   
   /* for(int i = 0; i < N; i++)
-    for(int j = 0; j < M; j++)
-      cout << "Pos " << i << j << " Euclidiana: " << matriz[i][j].euclidian[X] << " , " << matriz[i][j].euclidian[Y] << endl;
+     for(int j = 0; j < M; j++)
+     cout << "Pos " << i << j << " Euclidiana: " << matriz[i][j].euclidian[X] << " , " << matriz[i][j].euclidian[Y] << endl;
   */
   
   return 0;
