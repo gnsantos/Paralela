@@ -169,40 +169,40 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
   Joaninha* jojo = joanas[index];
   int i = jojo->pos_i, j = jojo->pos_j; 
   Hexa cel_j = m[i][j];
-  Hexa v[6];
+  Hexa* v[6];
   Hexa dest = cel_j;
   double temp_atual = cel_j.temperatura;
   
   double diff = -1;
 
-  if(pos_i%2){ /*linha impar*/
-    if(i > 1 && j > 1) v[1] = m[i-1][j-1];
-    if(i > 1) v[2] = m[i-1][j];
-    if(j > 1) v[3] = m[i][j-1];
-    if(j + 1 < lar ) v[4] = m[i][j+1];
-    if(i + 1 < alt && j > 1) v[5] = m[i+1][j-1];
-    if(i + 1 < alt) v[0] = m[i+1][j];
+  if(i%2){ /*linha impar*/
+    if(i > 1 && j > 1) v[1] = &m[i-1][j-1];
+    if(i > 1) v[2] = &m[i-1][j];
+    if(j > 1) v[3] = &m[i][j-1];
+    if(j + 1 < lar ) v[4] = &m[i][j+1];
+    if(i + 1 < alt && j > 1) v[5] = &m[i+1][j-1];
+    if(i + 1 < alt) v[0] = &m[i+1][j];
   }
 
   else{ /*linha par*/
-    if(i > 1 && j + 1 < lar) v[1] = m[i-1][j+1];
-    if(i > 1) v[2] = m[i-1][j];
-    if(j > 1) v[3] = m[i][j-1];
-    if(j + 1 < lar ) v[4] = m[i][j+1];
-    if(i + 1 < alt && j + 1 < lar) v[5] = m[i+1][j+1];
-    if(i + 1 < alt) v[0] = m[i+1][j];
+    if(i > 1 && j + 1 < lar) v[1] = &m[i-1][j+1];
+    if(i > 1) v[2] = &m[i-1][j];
+    if(j > 1) v[3] = &m[i][j-1];
+    if(j + 1 < lar ) v[4] = &m[i][j+1];
+    if(i + 1 < alt && j + 1 < lar) v[5] = &m[i+1][j+1];
+    if(i + 1 < alt) v[0] = &m[i+1][j];
   }
 
   for(int k = 0; k < 6; k++){
-    if(v[k] != NULL && v[k].temperatura >= THETA_MIN && v[k].temperatura <= THETA_MAX){
-      if( fabs(temp_atual - v[k].temperatura) > diff ){
-	diff = fabs(temp_atual - v[k].temperatura);
-	dest = v[k];
+    if(v[k] != NULL && v[k]->temperatura >= THETA_MIN && v[k]->temperatura <= THETA_MAX){
+      if( fabs(temp_atual - v[k]->temperatura) > diff ){
+	diff = fabs(temp_atual - v[k]->temperatura);
+	dest = (*v[k]);
       }
     }
   }
   
-  if(dest != cel_j){
+  if(dest.euclidian[0] != cel_j.euclidian[0] || dest.euclidian[1] != cel_j.euclidian[1]){
     Joaninha* hue = jojo;
     dest.list.push_back(hue); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
   }
