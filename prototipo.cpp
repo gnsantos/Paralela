@@ -92,6 +92,23 @@ void print_matrix(Hexa** matrix, int altura, int largura){
   }
 }
 
+void print_matrix2(Hexa** matrix, int altura, int largura){
+  for(int i = 0; i < altura; i++ ){
+    for(int j = 0; j < largura; j++){
+      if(matrix[j][i].joaninha)
+	printf("* ");
+      else if(matrix[j][i].calor)
+	printf("+ ");
+      else if(matrix[j][i].frio)
+	printf("- ");
+      else
+	printf(". ");
+    }
+    printf("\n");
+  }
+}
+
+
 void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
   srand(time(NULL));
   for(int i  =  0; i < num_j; ){
@@ -120,6 +137,18 @@ void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double
 	matrix[i][j].turnos_fonte_ativa = t;
       }
     }
+  }
+}
+
+double dist_gubi(int i,int j,int k, int l){
+  if(i == k){
+    return abs(l-j);
+  }
+  if(j == l){
+    return abs(i-k);
+  }
+  else{ //nao-adjacente
+    
   }
 }
 
@@ -269,6 +298,7 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
       screen[i][j] = EMPTY;
     }
   }
+
   for (i = 0; i < m; i++) {
     if (i%4 == 0) {
       j = 0;
@@ -393,6 +423,10 @@ int main(int arg, char** argv){
   */
 
   print_matrix(matriz, N, M);
+  
+  cout << endl;
+
+  print_matrix2(matriz, N, M); 
 
   atualiza_temps(matriz, N, M, TEMP_FONTE);
  
