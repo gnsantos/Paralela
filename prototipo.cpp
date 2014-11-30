@@ -16,8 +16,8 @@
 #define PROB_FRIO 0.3
 #define PROB_CALOR 0.1
 
-#define THETA_MAX 27
-#define THETA_MIN 18
+#define THETA_MAX 50
+#define THETA_MIN -50
 
 #define N 100
 #define M 100
@@ -32,24 +32,34 @@ const char RIGHT_DEL = ')';
 
 using namespace std;
 
+typedef struct celhexa Hexa;
+
 struct joaninha{
   int pos_i;
   int pos_j;
+  bool move; //destermina se a joninha se move ou nao
+  Hexa* dest; //caso a joaninha se mova, determina seu destino
 };
 
 typedef struct joaninha Joaninha;
+
+struct fonte{
+  int pos_i;
+  int pos_j;
+}
 
 struct celhexa{
   double euclidian[2];
   bool joaninha;
   bool frio;
   bool calor;
-  vector<Joaninha*> list;
   double temperatura;
-  int turnos_fonte_ativa;
+  Joaninha* bug; /*joaninha que esta na celula. NULL caso nao nada.*/
+  double old_diff; /*diferenca absoluta entre a temp do hexagono e a temp do hexagono
+		   em que a joaninha estava anteriormente.*/
+  int i,j; /*localizacao na matriz*/
 };
 
-typedef struct celhexa Hexa;
 
 vector<Joaninha*> joanas;
 int seed;
@@ -65,6 +75,8 @@ Hexa **init_grid(int altura, int largura){
       matriz[i][j].joaninha = matriz[i][j].frio = matriz[i][j].calor = false;
       matriz[i][j].temperatura = 0;
       matriz[i][j].turnos_fonte_ativa = 0;
+      matriz[i][j].i = i;
+      matriz[i][j].j = j;
       if(i%2){
 	matriz[i][j].euclidian[X] = 2*A*j - A;
 	matriz[i][j].euclidian[Y] = 1.5*i;
@@ -73,6 +85,8 @@ Hexa **init_grid(int altura, int largura){
 	matriz[i][j].euclidian[X] = 2*A*j;
 	matriz[i][j].euclidian[Y] = 1.5*i;
       }
+      matriz[i][j].bug = NULL;
+      matriz[i][j].old_diff = -1;
     }
   }
   return matriz;
@@ -122,7 +136,10 @@ void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
       ladybug = (Joaninha*) malloc(sizeof(Joaninha));
       ladybug->pos_i = pos_i;
       ladybug->pos_j = pos_j;
+      ladybug->move = false;
+      ladybug->dest = NULL;
       joanas.push_back(ladybug);
+      matrix[pos_i][pos_j].bug = ladybug;
       i++;
     }
   }
@@ -239,9 +256,22 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
   }
   
   if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
-    Joaninha* hue = jojo;
     //    printf("Joaninha na pos [%d][%d] quer se mover para cel de temp %lf.\n", i, j, dest->temperatura); 
-    dest->list.push_back(hue); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
+    if(dest->old_diff < fabs(dest->temperatura - temp_atual)){
+      if(dest->bug == NULL){
+	dest->bug = jojo;
+	jojo->move = true;
+	dest->old_diff = fabs(dest->temperatura - temp_atual);
+	jojo->dest = dest;
+      }
+      else{
+	dest->bug->move = false;
+	dest->bug = jojo;
+	jojo->move = true;
+	dest->old_diff  = fabs(dest->temperatura - temp_atual);
+	jojo->dest = dest;
+      }
+    }
   }
 
 }
@@ -250,7 +280,23 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
   for(int i = 0; i < joanas.size(); i++)
     move_joaninha(m, alt, lar, i);
   
-  double diff = -1;
+  for(int i = 0; i < joanas.size(); i++){
+    Joaninha *j = joanas[i];
+    if(j->move){
+      m[j->pos_i][j->pos_j].joaninha = false;
+      m[j->pos_i][j->pos_j].bug = NULL;
+      m[j->pos_i][j->pos_j].old_diff = -1;;
+      j->pos_i = j->dest->i;
+      j->pos_j = j->dest->j;
+      m[j->pos_i][j->pos_j].joaninha = true;
+      m[j->pos_i][j->pos_j].old_diff = -1;
+    }
+    else{
+      j->dest = NULL;
+    }
+  }
+
+  /*double diff = -1;
 
   for(int i = 0; i < alt; i++){ //itera em todos os hexagonos
     for(int j = 0; j < lar; j++){
@@ -283,7 +329,7 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
       escolhida = NULL;
     }
   }
-
+  */
 }
 
 
@@ -448,12 +494,12 @@ int main(int arg, char** argv){
     
     // print_temps(matriz, N, M);
     
-    //init_Screen(N,M,matriz);
+    //    init_Screen(N,M,matriz);
     //cout << "num: " << joanas.size() << endl;
     resolve_movimentos(matriz, N, M);
-    //sleep(1);
+    //  sleep(1);
   }
-  
+  //init_Screen(N,M,matriz);
   /* for(int i = 0; i < N; i++)
      for(int j = 0; j < M; j++)
      cout << "Pos " << i << j << " Euclidiana: " << matriz[i][j].euclidian[X] << " , " << matriz[i][j].euclidian[Y] << endl;
