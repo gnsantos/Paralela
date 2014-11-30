@@ -15,12 +15,14 @@
 #define TEMP_FONTE 15
 #define PROB_FRIO 0.3
 #define PROB_CALOR 0.1
+#define DURACAO_CALOR 2
+#define DURACAO_FRIO 2
 
 #define THETA_MAX 50
 #define THETA_MIN -50
 
-#define N 100
-#define M 100
+#define N 5
+#define M 5
 
 
 const char EMPTY = ' ';
@@ -46,7 +48,11 @@ typedef struct joaninha Joaninha;
 struct fonte{
   int pos_i;
   int pos_j;
-}
+  double temperatura;
+  int ciclos_ativa;
+};
+
+typedef struct fonte* FireAndIce;
 
 struct celhexa{
   double euclidian[2];
@@ -62,6 +68,7 @@ struct celhexa{
 
 
 vector<Joaninha*> joanas;
+vector<FireAndIce> gelo_e_fogo;
 int seed;
 
 Hexa **init_grid(int altura, int largura){
@@ -74,7 +81,6 @@ Hexa **init_grid(int altura, int largura){
     for(int j = 0; j < largura; j++){
       matriz[i][j].joaninha = matriz[i][j].frio = matriz[i][j].calor = false;
       matriz[i][j].temperatura = 0;
-      matriz[i][j].turnos_fonte_ativa = 0;
       matriz[i][j].i = i;
       matriz[i][j].j = j;
       if(i%2){
@@ -155,7 +161,11 @@ void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double
 	  matrix[i][j].frio = true;
 	else
 	  matrix[i][j].calor = true;
-	matrix[i][j].turnos_fonte_ativa = t;
+	FireAndIce ned = (FireAndIce) malloc(sizeof(*ned));
+	ned->temperatura = calor;
+	ned->ciclos_ativa = t;
+	ned->pos_i = i; ned->pos_j = j;
+	gelo_e_fogo.push_back(ned);
       }
     }
   }
@@ -179,10 +189,10 @@ double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
   double x2 = m[k][l].euclidian[X];
   double y2 = m[k][l].euclidian[Y];
 
-  return abs((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+  return fabs((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
-double temp_hex(Hexa** m, int altura, int largura, int i, int j, double cte){
+/*double temp_hex(Hexa** m, int altura, int largura, int i, int j, double cte){
   double temp_h = 0;
   for(int k = 0; k < altura; k++){
     for(int l = 0; l < largura; l++){
@@ -195,6 +205,23 @@ double temp_hex(Hexa** m, int altura, int largura, int i, int j, double cte){
 	  temp_h -= cte/d;
       }
     }
+  }
+  m[i][j].temperatura = temp_h;
+  return temp_h;
+}
+*/
+
+double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
+  double temp_h = 0;
+  for(int k = 0; k < joanas.size(); k++){
+    Joaninha* jojo = joanas[k];
+    if(i != jojo->pos_i || j != jojo->pos_j)
+      temp_h += cte/dist_euclidiana(m, i, j, jojo->pos_i, jojo->pos_j);
+  }
+  for(int k = 0; k < gelo_e_fogo.size(); k++){
+    FireAndIce fonte = gelo_e_fogo[k];
+    if(i != fonte->pos_i || j != fonte->pos_j)
+      temp_h += (fonte->temperatura)/dist_euclidiana(m, i, j, fonte->pos_i, fonte->pos_j);
   }
   m[i][j].temperatura = temp_h;
   return temp_h;
@@ -215,13 +242,13 @@ void print_temps(Hexa** m, int altura, int largura){
 }
 
 
-void move_joaninha(Hexa** m, int alt, int lar, int index){
+void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
   Joaninha* jojo = joanas[index];
   int i = jojo->pos_i, j = jojo->pos_j; 
   Hexa cel_j = m[i][j];
   Hexa* v[6];
   Hexa* dest = &cel_j;
-  double temp_atual = cel_j.temperatura;
+  double temp_atual = temp_hex(m, alt, lar, i, j,cte);
 
   for(int k = 0; k < 6; k++)
     v[k] = NULL;
@@ -229,29 +256,33 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
   double diff = -1;
 
   if(i%2){ /*linha impar*/
-    if(i > 1 && j > 1) v[1] = &m[i-1][j-1];
-    if(i > 1) v[2] = &m[i-1][j];
-    if(j > 1) v[3] = &m[i][j-1];
+    if(i >= 1 && j >= 1) v[1] = &m[i-1][j-1];
+    if(i >= 1) v[2] = &m[i-1][j];
+    if(j >= 1) v[3] = &m[i][j-1];
     if(j + 1 < lar ) v[4] = &m[i][j+1];
-    if(i + 1 < alt && j > 1) v[5] = &m[i+1][j-1];
+    if(i + 1 < alt && j >= 1) v[5] = &m[i+1][j-1];
     if(i + 1 < alt) v[0] = &m[i+1][j];
   }
 
   else{ /*linha par*/
-    if(i > 1 && j + 1 < lar) v[1] = &m[i-1][j+1];
-    if(i > 1) v[2] = &m[i-1][j];
-    if(j > 1) v[3] = &m[i][j-1];
+    if(i >= 1 && j + 1 < lar) v[1] = &m[i-1][j+1];
+    if(i >= 1) v[2] = &m[i-1][j];
+    if(j >= 1) v[3] = &m[i][j-1];
     if(j + 1 < lar ) v[4] = &m[i][j+1];
     if(i + 1 < alt && j + 1 < lar) v[5] = &m[i+1][j+1];
     if(i + 1 < alt) v[0] = &m[i+1][j];
   }
 
   for(int k = 0; k < 6; k++){
-    if(v[k] != NULL && v[k]->temperatura >= THETA_MIN && v[k]->temperatura <= THETA_MAX && !v[k]->joaninha){
-      if( fabs(temp_atual - v[k]->temperatura) > diff ){
-	diff = fabs(temp_atual - v[k]->temperatura);
-	dest = v[k];
+    if(v[k] != NULL && !v[k]->joaninha){
+      v[k]->temperatura = temp_hex(m,alt,lar,v[k]->i,v[k]->j,cte);
+      if(v[k]->temperatura >= THETA_MIN && v[k]->temperatura <= THETA_MAX){
+	if( fabs(temp_atual - v[k]->temperatura) > diff ){
+	  diff = fabs(temp_atual - v[k]->temperatura);
+	  dest = v[k];
+	}
       }
+      v[k]->temperatura = 0;
     }
   }
   
@@ -276,9 +307,9 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
 
 }
 
-void resolve_movimentos(Hexa** m, int alt, int lar){
+void resolve_movimentos(Hexa** m, int alt, int lar, double cte){
   for(int i = 0; i < joanas.size(); i++)
-    move_joaninha(m, alt, lar, i);
+    move_joaninha(m, alt, lar, i, cte);
   
   for(int i = 0; i < joanas.size(); i++){
     Joaninha *j = joanas[i];
@@ -468,8 +499,8 @@ int main(int arg, char** argv){
 
   coloca_joaninha(matriz, N, M, j);
 
-  coloca_fonte(matriz, N, M, PROB_CALOR, 2, TEMP_FONTE);
-  coloca_fonte(matriz, N, M, PROB_FRIO, 2, -TEMP_FONTE);
+  coloca_fonte(matriz, N, M, PROB_CALOR, DURACAO_CALOR, TEMP_FONTE);
+  coloca_fonte(matriz, N, M, PROB_FRIO, DURACAO_FRIO, -TEMP_FONTE);
   
   
   /*matriz[0][0].joaninha = false; matriz[0][0].calor = false; matriz[0][0].frio = true;
@@ -486,18 +517,18 @@ int main(int arg, char** argv){
     
     //print_matrix(matriz, N, M);
   
-    //    cout << endl;
+    //cout << endl;
 
     //print_matrix2(matriz, N, M); 
     
-    atualiza_temps(matriz, N, M, TEMP_FONTE);
+    //atualiza_temps(matriz, N, M, TEMP_FONTE);
     
     // print_temps(matriz, N, M);
     
-    //    init_Screen(N,M,matriz);
+     init_Screen(N,M,matriz);
     //cout << "num: " << joanas.size() << endl;
-    resolve_movimentos(matriz, N, M);
-    //  sleep(1);
+    resolve_movimentos(matriz, N, M, TEMP_FONTE);
+      sleep(1);
   }
   //init_Screen(N,M,matriz);
   /* for(int i = 0; i < N; i++)
