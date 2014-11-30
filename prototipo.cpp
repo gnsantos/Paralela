@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <unistd.h>
 #include <cstdio>
 
 #define X 0
@@ -11,15 +12,15 @@
 #define I 0
 #define J 1
 
-#define TEMP_FONTE 10
+#define TEMP_FONTE 15
 #define PROB_FRIO 0.3
-#define PROB_CALOR 0.5
+#define PROB_CALOR 0.1
 
-#define THETA_MAX 7
-#define THETA_MIN 3
+#define THETA_MAX 27
+#define THETA_MIN 18
 
-#define N 3
-#define M 3
+#define N 100
+#define M 100
 
 
 const char EMPTY = ' ';
@@ -51,6 +52,7 @@ struct celhexa{
 typedef struct celhexa Hexa;
 
 vector<Joaninha*> joanas;
+int seed;
 
 Hexa **init_grid(int altura, int largura){
   Hexa **matriz = (Hexa**) malloc(altura*sizeof(Hexa*));
@@ -110,22 +112,24 @@ void print_matrix2(Hexa** matrix, int altura, int largura){
 
 
 void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
-  srand(time(NULL));
+  srand(seed);
   for(int i  =  0; i < num_j; ){
     int pos_i = rand()%altura;
     int pos_j = rand()%largura;		
     if(!matrix[pos_i][pos_j].joaninha){
+      Joaninha* ladybug;
       matrix[pos_i][pos_j].joaninha = true;
-      joanas[i] = (Joaninha*) malloc(sizeof(Joaninha));
-      joanas[i]->pos_i = pos_i;
-      joanas[i]->pos_j = pos_j;
+      ladybug = (Joaninha*) malloc(sizeof(Joaninha));
+      ladybug->pos_i = pos_i;
+      ladybug->pos_j = pos_j;
+      joanas.push_back(ladybug);
       i++;
     }
   }
 }
 
 void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double calor){
-  srand(time(NULL));
+  srand(seed);
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
       double prob = (1.0*rand())/RAND_MAX;
@@ -140,7 +144,7 @@ void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double
   }
 }
 
-double dist_gubi(int i,int j,int k, int l){
+/*double dist_gubi(int i,int j,int k, int l){
   if(i == k){
     return abs(l-j);
   }
@@ -150,7 +154,7 @@ double dist_gubi(int i,int j,int k, int l){
   else{ //nao-adjacente
     
   }
-}
+  }*/
 
 double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
   double x1 = m[i][j].euclidian[X];
@@ -199,8 +203,11 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
   int i = jojo->pos_i, j = jojo->pos_j; 
   Hexa cel_j = m[i][j];
   Hexa* v[6];
-  Hexa dest = cel_j;
+  Hexa* dest = &cel_j;
   double temp_atual = cel_j.temperatura;
+
+  for(int k = 0; k < 6; k++)
+    v[k] = NULL;
   
   double diff = -1;
 
@@ -223,17 +230,18 @@ void move_joaninha(Hexa** m, int alt, int lar, int index){
   }
 
   for(int k = 0; k < 6; k++){
-    if(v[k] != NULL && v[k]->temperatura >= THETA_MIN && v[k]->temperatura <= THETA_MAX){
+    if(v[k] != NULL && v[k]->temperatura >= THETA_MIN && v[k]->temperatura <= THETA_MAX && !v[k]->joaninha){
       if( fabs(temp_atual - v[k]->temperatura) > diff ){
 	diff = fabs(temp_atual - v[k]->temperatura);
-	dest = (*v[k]);
+	dest = v[k];
       }
     }
   }
   
-  if(dest.euclidian[0] != cel_j.euclidian[0] || dest.euclidian[1] != cel_j.euclidian[1]){
+  if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
     Joaninha* hue = jojo;
-    dest.list.push_back(hue); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
+    //    printf("Joaninha na pos [%d][%d] quer se mover para cel de temp %lf.\n", i, j, dest->temperatura); 
+    dest->list.push_back(hue); /*coloca a joaninha na lista daqueles que querem se mover para o hexagono dest*/
   }
 
 }
@@ -243,13 +251,13 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
     move_joaninha(m, alt, lar, i);
   
   double diff = -1;
-  Joaninha* escolhida = NULL;
 
   for(int i = 0; i < alt; i++){ //itera em todos os hexagonos
     for(int j = 0; j < lar; j++){
-
       int x,y;
+      Joaninha* escolhida = NULL;
       for(int k = 0; k < m[i][j].list.size(); k++){ //itera na lista de quem quer ir para o hexagono
+	//	printf("celula [%d][%d] tem list nao vazia.\n", i,j);
 	x = m[i][j].list[k]->pos_i;
 	y = m[i][j].list[k]->pos_j;
 	if(fabs(m[i][j].temperatura - m[x][y].temperatura) > diff){
@@ -265,14 +273,19 @@ void resolve_movimentos(Hexa** m, int alt, int lar){
 	if(!m[i][j].joaninha){
 	  m[i][j].joaninha = true;
 	  m[x][y].joaninha = false;
+	  escolhida->pos_i = i;
+	  escolhida->pos_j = j;
 	}
       }
 
       diff = -1;
+      m[i][j].list.clear();
+      escolhida = NULL;
     }
   }
 
 }
+
 
 void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
   // Cuidado, coordenadas x y são invertidas para printar
@@ -401,7 +414,9 @@ int main(int arg, char** argv){
   Hexa **matriz = init_grid(N, M);
   
   int j = atoi(argv[1]);
-
+  int t = atoi(argv[2]);
+  seed = atoi(argv[3]);
+  
   joanas.resize(j);
   joanas.clear(); 
 
@@ -421,18 +436,23 @@ int main(int arg, char** argv){
     matriz[2][1].joaninha = false; matriz[2][1].calor = true; matriz[2][1].frio = false;
     matriz[2][2].joaninha = false; matriz[2][2].calor = false; matriz[2][2].frio = false;
   */
-
-  print_matrix(matriz, N, M);
+  for(int k = 0; k < t; k++){
+    
+    //print_matrix(matriz, N, M);
   
-  cout << endl;
+    //    cout << endl;
 
-  print_matrix2(matriz, N, M); 
-
-  atualiza_temps(matriz, N, M, TEMP_FONTE);
- 
-  print_temps(matriz, N, M);
-
-  init_Screen(N,M,matriz);
+    //print_matrix2(matriz, N, M); 
+    
+    atualiza_temps(matriz, N, M, TEMP_FONTE);
+    
+    // print_temps(matriz, N, M);
+    
+    //init_Screen(N,M,matriz);
+    //cout << "num: " << joanas.size() << endl;
+    resolve_movimentos(matriz, N, M);
+    //sleep(1);
+  }
   
   /* for(int i = 0; i < N; i++)
      for(int j = 0; j < M; j++)
