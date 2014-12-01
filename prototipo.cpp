@@ -73,9 +73,12 @@ int seed;
 
 Hexa **init_grid(int altura, int largura){
   Hexa **matriz = (Hexa**) malloc(altura*sizeof(Hexa*));
-  double A = sqrt(3)/2;
   for(int i = 0; i < altura; i++)
     matriz[i] = (Hexa*) malloc(largura*sizeof(Hexa));
+
+// LADO = sqrt(3)/3.0
+// APOTEMA = 0.5;
+  double dy = 0.5*sqrt(3.0);
   
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
@@ -84,12 +87,12 @@ Hexa **init_grid(int altura, int largura){
       matriz[i][j].i = i;
       matriz[i][j].j = j;
       if(i%2){
-	matriz[i][j].euclidian[X] = 2*A*j - A;
-	matriz[i][j].euclidian[Y] = 1.5*i;
+	matriz[i][j].euclidian[X] = j - 0.5;
+	matriz[i][j].euclidian[Y] = dy*i;
       }
       else{
-	matriz[i][j].euclidian[X] = 2*A*j;
-	matriz[i][j].euclidian[Y] = 1.5*i;
+	matriz[i][j].euclidian[X] = j;
+	matriz[i][j].euclidian[Y] = dy*i;
       }
       matriz[i][j].bug = NULL;
       matriz[i][j].old_diff = -1;
