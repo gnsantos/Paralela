@@ -21,8 +21,8 @@
 #define THETA_MAX 40
 #define THETA_MIN -40
 
-#define N 6
-#define M 6
+#define N 100
+#define M 100
 
 
 const char EMPTY = ' ';
@@ -277,34 +277,21 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
       
   if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
     if(dest->old_diff < fabs(dest->temperatura - temp_atual)){
-      printf("hueeeeeeee\n");
-      /*if(dest->bug == NULL){
+      if(dest->bug == NULL){
         dest->bug = jojo;
         jojo->move = true;
         dest->old_diff = fabs(dest->temperatura - temp_atual);
         jojo->dest = dest;
 	
-
-	cel_j->joaninha = false;
-	cel_j->bug = NULL;
-	cel_j->old_diff = 1 << 20;
+      }
+      else{//????????
+	dest->bug->move = false;
+	dest->bug = jojo;
+	jojo->move = true;
+	dest->old_diff  = fabs(dest->temperatura - temp_atual);
+	jojo->dest = dest;
 	
-	
-	}*/
-      //else{//????????
-
-      //dest->bug->move = false;
-
-      dest->bug = jojo;
-      jojo->move = true;
-      dest->old_diff  = fabs(dest->temperatura - temp_atual);
-      jojo->dest = dest;
-
-      cel_j.joaninha = false;
-      cel_j.bug = NULL;
-      cel_j.old_diff =-1;
-	
-      //}
+      }
     }
   }
 
@@ -435,7 +422,8 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
         screen[x + 1][y + 4] = JOANINHA;
         screen[x + 1][y + 5] = RIGHT_DEL;
 	}
-	else */if (matriz[j][i].frio && !matriz[j][i].calor){
+	else */
+      if (matriz[j][i].frio && !matriz[j][i].calor){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = FRIO;
         screen[x + 1][y + 5] = RIGHT_DEL;
@@ -489,9 +477,11 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
 int main(int arg, char** argv){
   Hexa **matriz = init_grid(N, M);
       
-  int j = atoi(argv[1]);
-  int t = atoi(argv[2]);
-  seed_gb = atoi(argv[3]);
+  int j = 10;//atoi(argv[1]);
+  int t = 1;//atoi(argv[2]);
+  seed_gb = 666;//atoi(argv[3]);
+
+  
       
   joanas.resize(j);
   joanas.clear(); 
@@ -503,14 +493,14 @@ int main(int arg, char** argv){
     coloca_fonte(matriz, N, M, PROB_CALOR, DURACAO_CALOR, TEMP_FONTE);
     coloca_fonte(matriz, N, M, PROB_FRIO, DURACAO_FRIO, -TEMP_FONTE);
       
-    init_Screen(N,M,matriz);
+    //init_Screen(N,M,matriz);
     resolve_movimentos(matriz, N, M, TEMP_FONTE);
     remove_fontes_esgotadas(matriz);
     sleep(1);
 
-    for(unsigned int k = 0; k < joanas.size();k++){
+    /*for(unsigned int k = 0; k < joanas.size();k++){
       printf("%d,%d\n",joanas[k]->pos_i,joanas[k]->pos_j);
-    }
+      }*/
   }
   //init_Screen(N,M,matriz);
   /* for(int i = 0; i < N; i++)
