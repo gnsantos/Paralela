@@ -13,18 +13,19 @@
 #define I 0
 #define J 1
 
-#define TEMP_FONTE 30
-#define PROB_FRIO 0.1
-#define PROB_CALOR 0.1
-#define DURACAO_CALOR 3
-#define DURACAO_FRIO 3
-
-#define THETA_MAX 40
-#define THETA_MIN -40
-
-#define N 200
-#define M 200
-
+double TEMP_FONTE;
+double PROB_FRIO;
+double PROB_CALOR;
+int DURACAO_CALOR;
+int DURACAO_FRIO;
+double THETA_MAX;
+double THETA_MIN;
+int N;
+int M;
+int j;
+int seed_gb;
+int T;
+int P;
 
 const char EMPTY = ' ';
 const char JOANINHA = 'J';
@@ -72,19 +73,19 @@ struct celhexa{
 
 vector<Joaninha*> joanas;
 vector<FireAndIce> gelo_e_fogo;
-int seed_gb;
 
 Hexa **init_grid(int altura, int largura){
   Hexa **matriz = (Hexa**) malloc(altura*sizeof(Hexa*));
   for(int i = 0; i < altura; i++)
     matriz[i] = (Hexa*) malloc(largura*sizeof(Hexa));
 
-  omp_set_num_threads(omp_get_num_procs() - 1);
+  omp_set_num_threads(P);
 
   // LADO = sqrt(3)/3.0
   // APOTEMA = 0.5;
   double dy = 0.5*sqrt(3.0);
   
+  #pragma omp parallel for schedule(dynamic)
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
       matriz[i][j].joaninha = matriz[i][j].frio = matriz[i][j].calor = false;
@@ -162,7 +163,6 @@ void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
 }
 
 void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double calor){
-  //#pragma omp parallel for
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
       Hexa *m = &matrix[i][j];
@@ -206,14 +206,14 @@ double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
   Joaninha* jojo;
   FireAndIce fonte;
 
-  #pragma omp parallel for  private(jojo) reduction(+: temp_h)
+#pragma omp parallel for  private(jojo) reduction(+: temp_h)
   for(unsigned int k = 0; k < joanas.size(); k++){
     jojo = joanas[k];
     if(i != jojo->pos_i || j != jojo->pos_j)
       temp_h += cte/dist_euclidiana(m, i, j, jojo->pos_i, jojo->pos_j);
   }
 
-  #pragma omp parallel for  private(fonte) reduction(+: temp_h)
+#pragma omp parallel for  private(fonte) reduction(+: temp_h)
   for(unsigned int k = 0; k < gelo_e_fogo.size(); k++){
     fonte = gelo_e_fogo[k];
     if(i != fonte->pos_i || j != fonte->pos_j)
@@ -222,12 +222,6 @@ double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
 
   m[i][j].temperatura = temp_h;
   return temp_h;
-}
-
-void atualiza_temps(Hexa** m, int alt, int lar, double cte){
-  for(int i = 0; i < alt; i++)
-    for(int j = 0; j < lar; j++)
-      temp_hex(m, alt, lar, i, j, cte);
 }
 
 void print_temps(Hexa** m, int altura, int largura){
@@ -289,7 +283,6 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
       
   if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
     if(dest->old_diff < fabs(dest->temperatura - temp_atual)){
-      //printf("hueeee\n");
       if(dest->bug == NULL){
         dest->bug = jojo;
         jojo->move = true;
@@ -297,7 +290,7 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
         jojo->dest = dest;
 	
       }
-      else{//????????
+      else{
 	dest->bug->move = false;
 	dest->bug = jojo;
 	jojo->move = true;
@@ -326,9 +319,11 @@ void remove_fontes_esgotadas(Hexa** m){
 }
 
 void resolve_movimentos(Hexa** m, int alt, int lar, double cte){
+  #pragma omp parallel for schedule(dynamic)
   for(unsigned int i = 0; i < joanas.size(); i++)
     move_joaninha(m, alt, lar, i, cte);
-      
+  
+  #pragma omp parallel for schedule(dynamic)
   for(unsigned int i = 0; i < joanas.size(); i++){
     Joaninha *j = joanas[i];
     if(j->move){
@@ -434,8 +429,8 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = JOANINHA;
         screen[x + 1][y + 5] = RIGHT_DEL;
-	}
-	else if (matriz[j][i].frio && !matriz[j][i].calor){
+      }
+      else if (matriz[j][i].frio && !matriz[j][i].calor){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = FRIO;
         screen[x + 1][y + 5] = RIGHT_DEL;
@@ -449,24 +444,9 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
 	screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = CALOR_E_FRIO;
         screen[x + 1][y + 5] = RIGHT_DEL;
-      }
-      // else{
-      // 	screen[x + 1][y + 3] = LEFT_DEL;
-      // 	screen[x + 1][y + 4] = EMPTY;
-      // 	screen[x + 1][y + 5] = RIGHT_DEL;
-      // }
-                    
+      }                    
     }
   }
-
-  /*for(unsigned int k = 0; k < joanas.size();k++){
-    y = joanas[k]->pos_j*7;
-    x = joanas[k]->pos_i*4;
-    if (joanas[k]->pos_j%2 == 0) x += 2;
-    screen[x + 1][y + 3] = LEFT_DEL;
-    screen[x + 1][y + 4] = JOANINHA;
-    screen[x + 1][y + 5] = RIGHT_DEL;
-    }*/
 
   // Remove pontas
   screen[0][0] = EMPTY;
@@ -486,38 +466,92 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
 
 
 
-int main(int arg, char** argv){
-  Hexa **matriz = init_grid(N, M);
-      
-  int j = 1000;//atoi(argv[1]);
-  int t = 100;//atoi(argv[2]);
-  seed_gb = 666;//atoi(argv[3]);
-      
+int main(int argc, char** argv){
   joanas.resize(j);
-  joanas.clear(); 
+  joanas.clear();
+
+  int c;
+  bool v = false;
+  /*
+    L - largura da matriz
+    A - altura da matriz
+    j - numero de joaninhas
+    s - seed
+    C - constante de emissao de calor
+    q - theta max
+    t - theta min
+    T - numero de ciclos
+    c - probabilidade de aparecer fonte de calor
+    f - probabilidade de aparecer fonte de frio
+    P - numero de threads
+    r - numero de turnos que fonte quente fica ativa
+    e - numero de turnos que fonte fria fica ativa
+    v - liga visualizacao
+  */
+  while( (c = getopt(argc, argv, "vL:A:j:s:C:q:t:T:c:f:P:r:e:") ) != -1 ){
+    switch(c){
+    case 'L':
+      M = atoi(optarg);
+      break;
+    case 'A':
+      N = atoi(optarg);
+      break;
+    case 'j':
+      j = atoi(optarg);
+      break;
+    case 's':
+      seed_gb = atoi(optarg);
+      break;
+    case 'T':
+      T = atoi(optarg);
+      break;
+    case 'P':
+      P = atoi(optarg);
+      break;
+    case 'C':
+      TEMP_FONTE = atof(optarg);
+      break;
+    case 'q':
+      THETA_MAX = atof(optarg);
+      break;
+    case 't':
+      THETA_MIN = -atof(optarg);
+      break;
+    case 'c':
+      PROB_CALOR = atof(optarg);
+      break;
+    case 'f':
+      PROB_FRIO = atof(optarg);
+      break;
+    case 'r':
+      DURACAO_CALOR = atoi(optarg);
+      break;
+    case 'e':
+      DURACAO_FRIO = atoi(optarg);
+      break;
+    case 'v':
+      v = true;
+      break;
+    }
+  }
+
+  Hexa **matriz = init_grid(N, M);
 
   coloca_joaninha(matriz, N, M, j);
       
-  for(int k = 0; k < t; k++){
+  for(int k = 0; k < T; k++){
       
     coloca_fonte(matriz, N, M, PROB_CALOR, DURACAO_CALOR, TEMP_FONTE);
-    coloca_fonte(matriz, N, M, PROB_FRIO, DURACAO_FRIO, -TEMP_FONTE);
-      
-    //init_Screen(N,M,matriz);
+    coloca_fonte(matriz, N, M, PROB_FRIO, DURACAO_FRIO, -TEMP_FONTE);  
+    if(v){
+      init_Screen(N,M,matriz);
+      sleep(1);
+    }  
     resolve_movimentos(matriz, N, M, TEMP_FONTE);
     remove_fontes_esgotadas(matriz);
-    //sleep(1);
-
-    /*for(unsigned int k = 0; k < joanas.size();k++){
-      printf("%d,%d\n",joanas[k]->pos_i,joanas[k]->pos_j);
-      }*/
   }
-  //init_Screen(N,M,matriz);
-  /* for(int i = 0; i < N; i++)
-     for(int j = 0; j < M; j++)
-     cout << "Pos " << i << j << " Euclidiana: " << matriz[i][j].euclidian[X] << " , " << matriz[i][j].euclidian[Y] << endl;
-  */
-      
-  //init_Screen(N,M,matriz);
+
+  if(v) init_Screen(N,M,matriz);
+ 
   return 0;
 }
