@@ -12,17 +12,17 @@
 #define I 0
 #define J 1
 
-#define TEMP_FONTE 15
+#define TEMP_FONTE 30
 #define PROB_FRIO 0.1
 #define PROB_CALOR 0.1
 #define DURACAO_CALOR 3
 #define DURACAO_FRIO 3
 
-#define THETA_MAX 50
-#define THETA_MIN -50
+#define THETA_MAX 40
+#define THETA_MIN -40
 
-#define N 7
-#define M 7
+#define N 6
+#define M 6
 
 
 const char EMPTY = ' ';
@@ -198,12 +198,12 @@ double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
 
 double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
   double temp_h = 0;
-  for(int k = 0; k < joanas.size(); k++){
+  for(unsigned int k = 0; k < joanas.size(); k++){
     Joaninha* jojo = joanas[k];
     if(i != jojo->pos_i || j != jojo->pos_j)
       temp_h += cte/dist_euclidiana(m, i, j, jojo->pos_i, jojo->pos_j);
   }
-  for(int k = 0; k < gelo_e_fogo.size(); k++){
+  for(unsigned int k = 0; k < gelo_e_fogo.size(); k++){
     FireAndIce fonte = gelo_e_fogo[k];
     if(i != fonte->pos_i || j != fonte->pos_j)
       temp_h += (fonte->temperatura)/dist_euclidiana(m, i, j, fonte->pos_i, fonte->pos_j);
@@ -277,49 +277,64 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
       
   if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
     if(dest->old_diff < fabs(dest->temperatura - temp_atual)){
-      if(dest->bug == NULL){
+      printf("hueeeeeeee\n");
+      /*if(dest->bug == NULL){
         dest->bug = jojo;
         jojo->move = true;
         dest->old_diff = fabs(dest->temperatura - temp_atual);
         jojo->dest = dest;
-      }
-      else{
-        dest->bug->move = false;
-        dest->bug = jojo;
-        jojo->move = true;
-        dest->old_diff  = fabs(dest->temperatura - temp_atual);
-        jojo->dest = dest;
-      }
+	
+
+	cel_j->joaninha = false;
+	cel_j->bug = NULL;
+	cel_j->old_diff = 1 << 20;
+	
+	
+	}*/
+      //else{//????????
+
+      //dest->bug->move = false;
+
+      dest->bug = jojo;
+      jojo->move = true;
+      dest->old_diff  = fabs(dest->temperatura - temp_atual);
+      jojo->dest = dest;
+
+      cel_j.joaninha = false;
+      cel_j.bug = NULL;
+      cel_j.old_diff =-1;
+	
+      //}
     }
   }
 
 }
 
 void remove_fontes_esgotadas(Hexa** m){
-  for (int i = 0; i < gelo_e_fogo.size(); i++) {
+  for (unsigned int i = 0; i < gelo_e_fogo.size(); i++) {
     gelo_e_fogo[i]->ciclos_ativa--;
     if (!gelo_e_fogo[i]->ciclos_ativa) {
-		if(gelo_e_fogo[i]->temperatura >= 0){
-			m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].calor = false;
-		}
-		if(gelo_e_fogo[i]->temperatura <0){
-			m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].frio = false;
-		}
+      if(gelo_e_fogo[i]->temperatura >= 0){
+	m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].calor = false;
+      }
+      if(gelo_e_fogo[i]->temperatura <0){
+	m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].frio = false;
+      }
       gelo_e_fogo.erase(gelo_e_fogo.begin()+i);
     }
   }
 }
 
 void resolve_movimentos(Hexa** m, int alt, int lar, double cte){
-  for(int i = 0; i < joanas.size(); i++)
+  for(unsigned int i = 0; i < joanas.size(); i++)
     move_joaninha(m, alt, lar, i, cte);
       
-  for(int i = 0; i < joanas.size(); i++){
+  for(unsigned int i = 0; i < joanas.size(); i++){
     Joaninha *j = joanas[i];
     if(j->move){
       m[j->pos_i][j->pos_j].joaninha = false;
       m[j->pos_i][j->pos_j].bug = NULL;
-      m[j->pos_i][j->pos_j].old_diff = -1;;
+      m[j->pos_i][j->pos_j].old_diff = -1;
       j->pos_i = j->dest->i;
       j->pos_j = j->dest->j;
       j->move = false;
@@ -349,7 +364,6 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
   int j = 0;
   int x = 0;
   int y = 0;
-  char a;
             
   // Inicializa a matriz
   // Trocar por std::fill quando possível
@@ -416,12 +430,12 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
       y = j*7;
       x = i*4;
       if (j%2 == 0) x += 2;
-      if (matriz[j][i].joaninha){
+      /*if (matriz[j][i].joaninha){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = JOANINHA;
         screen[x + 1][y + 5] = RIGHT_DEL;
-      }
-      else if (matriz[j][i].frio && !matriz[j][i].calor){
+	}
+	else */if (matriz[j][i].frio && !matriz[j][i].calor){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = FRIO;
         screen[x + 1][y + 5] = RIGHT_DEL;
@@ -444,6 +458,16 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
                     
     }
   }
+
+  for(unsigned int k = 0; k < joanas.size();k++){
+    y = joanas[k]->pos_j*7;
+    x = joanas[k]->pos_i*4;
+    if (joanas[k]->pos_j%2 == 0) x += 2;
+    screen[x + 1][y + 3] = LEFT_DEL;
+    screen[x + 1][y + 4] = JOANINHA;
+    screen[x + 1][y + 5] = RIGHT_DEL;
+  }
+
   // Remove pontas
   screen[0][0] = EMPTY;
   screen[1][1] = EMPTY;
@@ -483,6 +507,10 @@ int main(int arg, char** argv){
     resolve_movimentos(matriz, N, M, TEMP_FONTE);
     remove_fontes_esgotadas(matriz);
     sleep(1);
+
+    for(unsigned int k = 0; k < joanas.size();k++){
+      printf("%d,%d\n",joanas[k]->pos_i,joanas[k]->pos_j);
+    }
   }
   //init_Screen(N,M,matriz);
   /* for(int i = 0; i < N; i++)
