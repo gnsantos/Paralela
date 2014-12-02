@@ -13,10 +13,10 @@
 #define J 1
 
 #define TEMP_FONTE 15
-#define PROB_FRIO 0.3
+#define PROB_FRIO 0.1
 #define PROB_CALOR 0.1
-#define DURACAO_CALOR 2
-#define DURACAO_FRIO 2
+#define DURACAO_CALOR 3
+#define DURACAO_FRIO 3
 
 #define THETA_MAX 50
 #define THETA_MIN -50
@@ -295,10 +295,16 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
 
 }
 
-void remove_fontes_esgotadas(){
+void remove_fontes_esgotadas(Hexa** m){
   for (int i = 0; i < gelo_e_fogo.size(); i++) {
     gelo_e_fogo[i]->ciclos_ativa--;
     if (!gelo_e_fogo[i]->ciclos_ativa) {
+		if(gelo_e_fogo[i]->temperatura >= 0){
+			m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].calor = false;
+		}
+		if(gelo_e_fogo[i]->temperatura <0){
+			m[gelo_e_fogo[i]->pos_i][gelo_e_fogo[i]->pos_j].frio = false;
+		}
       gelo_e_fogo.erase(gelo_e_fogo.begin()+i);
     }
   }
@@ -475,7 +481,7 @@ int main(int arg, char** argv){
       
     init_Screen(N,M,matriz);
     resolve_movimentos(matriz, N, M, TEMP_FONTE);
-    remove_fontes_esgotadas();
+    remove_fontes_esgotadas(matriz);
     sleep(1);
   }
   //init_Screen(N,M,matriz);
