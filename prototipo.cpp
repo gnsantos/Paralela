@@ -5,6 +5,7 @@
 #include <ctime>
 #include <unistd.h>
 #include <cstdio>
+#include <omp.h>
 
 #define X 0
 #define Y 1
@@ -21,8 +22,8 @@
 #define THETA_MAX 40
 #define THETA_MIN -40
 
-#define N 100
-#define M 100
+#define N 200
+#define M 200
 
 
 const char EMPTY = ' ';
@@ -78,10 +79,12 @@ Hexa **init_grid(int altura, int largura){
   for(int i = 0; i < altura; i++)
     matriz[i] = (Hexa*) malloc(largura*sizeof(Hexa));
 
+  omp_set_num_threads(omp_get_num_procs() - 1);
+
   // LADO = sqrt(3)/3.0
   // APOTEMA = 0.5;
   double dy = 0.5*sqrt(3.0);
-      
+  
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
       matriz[i][j].joaninha = matriz[i][j].frio = matriz[i][j].calor = false;
@@ -89,18 +92,19 @@ Hexa **init_grid(int altura, int largura){
       matriz[i][j].i = i;
       matriz[i][j].j = j;
       if(i%2){
-        matriz[i][j].euclidian[X] = j - 0.5;
-        matriz[i][j].euclidian[Y] = dy*i;
+	matriz[i][j].euclidian[X] = j - 0.5;
+	matriz[i][j].euclidian[Y] = dy*i;
       }
       else{
-        matriz[i][j].euclidian[X] = j;
-        matriz[i][j].euclidian[Y] = dy*i;
+	matriz[i][j].euclidian[X] = j;
+	matriz[i][j].euclidian[Y] = dy*i;
       }
       matriz[i][j].bug = NULL;
       matriz[i][j].old_diff = -1;
       matriz[i][j].seed = ((i+1) * seed_gb + j)%RAND_MAX;
-    }
+    }      
   }
+
   return matriz;
 }
 
@@ -158,6 +162,7 @@ void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
 }
 
 void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double calor){
+  //#pragma omp parallel for
   for(int i = 0; i < altura; i++){
     for(int j = 0; j < largura; j++){
       Hexa *m = &matrix[i][j];
@@ -198,16 +203,23 @@ double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
 
 double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
   double temp_h = 0;
+  Joaninha* jojo;
+  FireAndIce fonte;
+
+  #pragma omp parallel for  private(jojo) reduction(+: temp_h)
   for(unsigned int k = 0; k < joanas.size(); k++){
-    Joaninha* jojo = joanas[k];
+    jojo = joanas[k];
     if(i != jojo->pos_i || j != jojo->pos_j)
       temp_h += cte/dist_euclidiana(m, i, j, jojo->pos_i, jojo->pos_j);
   }
+
+  #pragma omp parallel for  private(fonte) reduction(+: temp_h)
   for(unsigned int k = 0; k < gelo_e_fogo.size(); k++){
-    FireAndIce fonte = gelo_e_fogo[k];
+    fonte = gelo_e_fogo[k];
     if(i != fonte->pos_i || j != fonte->pos_j)
       temp_h += (fonte->temperatura)/dist_euclidiana(m, i, j, fonte->pos_i, fonte->pos_j);
   }
+
   m[i][j].temperatura = temp_h;
   return temp_h;
 }
@@ -277,6 +289,7 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
       
   if(dest->euclidian[0] != cel_j.euclidian[0] || dest->euclidian[1] != cel_j.euclidian[1]){
     if(dest->old_diff < fabs(dest->temperatura - temp_atual)){
+      //printf("hueeee\n");
       if(dest->bug == NULL){
         dest->bug = jojo;
         jojo->move = true;
@@ -417,13 +430,12 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
       y = j*7;
       x = i*4;
       if (j%2 == 0) x += 2;
-      /*if (matriz[j][i].joaninha){
+      if (matriz[j][i].joaninha){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = JOANINHA;
         screen[x + 1][y + 5] = RIGHT_DEL;
 	}
-	else */
-      if (matriz[j][i].frio && !matriz[j][i].calor){
+	else if (matriz[j][i].frio && !matriz[j][i].calor){
         screen[x + 1][y + 3] = LEFT_DEL;
         screen[x + 1][y + 4] = FRIO;
         screen[x + 1][y + 5] = RIGHT_DEL;
@@ -447,14 +459,14 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
     }
   }
 
-  for(unsigned int k = 0; k < joanas.size();k++){
+  /*for(unsigned int k = 0; k < joanas.size();k++){
     y = joanas[k]->pos_j*7;
     x = joanas[k]->pos_i*4;
     if (joanas[k]->pos_j%2 == 0) x += 2;
     screen[x + 1][y + 3] = LEFT_DEL;
     screen[x + 1][y + 4] = JOANINHA;
     screen[x + 1][y + 5] = RIGHT_DEL;
-  }
+    }*/
 
   // Remove pontas
   screen[0][0] = EMPTY;
@@ -477,11 +489,9 @@ void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
 int main(int arg, char** argv){
   Hexa **matriz = init_grid(N, M);
       
-  int j = 10;//atoi(argv[1]);
-  int t = 1;//atoi(argv[2]);
+  int j = 1000;//atoi(argv[1]);
+  int t = 100;//atoi(argv[2]);
   seed_gb = 666;//atoi(argv[3]);
-
-  
       
   joanas.resize(j);
   joanas.clear(); 
@@ -496,7 +506,7 @@ int main(int arg, char** argv){
     //init_Screen(N,M,matriz);
     resolve_movimentos(matriz, N, M, TEMP_FONTE);
     remove_fontes_esgotadas(matriz);
-    sleep(1);
+    //sleep(1);
 
     /*for(unsigned int k = 0; k < joanas.size();k++){
       printf("%d,%d\n",joanas[k]->pos_i,joanas[k]->pos_j);
@@ -508,5 +518,6 @@ int main(int arg, char** argv){
      cout << "Pos " << i << j << " Euclidiana: " << matriz[i][j].euclidian[X] << " , " << matriz[i][j].euclidian[Y] << endl;
   */
       
+  //init_Screen(N,M,matriz);
   return 0;
 }
