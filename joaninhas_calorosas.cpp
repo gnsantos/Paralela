@@ -1,3 +1,11 @@
+/*
+  MAC431 - EP:   Joaninhas Calorosas
+  02 de novembro de 2014
+  Alunos:
+  Gervásio Protásio Santos Neto NUSP: 7990996
+  Mateus Barros Rodrigues NUSP: 7991037
+  Rodrigo Macena e Silva NUSP: 7580157
+ */
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -39,6 +47,10 @@ using namespace std;
 
 typedef struct celhexa Hexa;
 
+/*
+  struct joaninha: Corresponde a uma joaninha no programa, guardando informações de posição,
+  movimento e destino.
+ */
 struct joaninha{
   int pos_i;
   int pos_j;
@@ -48,6 +60,11 @@ struct joaninha{
 
 typedef struct joaninha Joaninha;
 
+/* 
+   struct fonte: Corresponde a uma fonte de calor/frio, guardando posição, temperatura
+   e # turnos que ainda permanecerá ativa.
+ */
+
 struct fonte{
   int pos_i;
   int pos_j;
@@ -56,7 +73,9 @@ struct fonte{
 };
 
 typedef struct fonte* FireAndIce;
-
+/*
+  Malha hexagonal correspondente ao campo do problema.
+ */
 struct celhexa{
   double euclidian[2];
   bool joaninha;
@@ -74,6 +93,11 @@ struct celhexa{
 vector<Joaninha*> joanas;
 vector<FireAndIce> gelo_e_fogo;
 
+
+/*
+  init_grid: Aloca matriz do problema e posiciona joaninhas distribuidas aleatoriamente a partir
+  de uma seed_gb. No inicio, não há fontes de frio ou calor. Todas as temperaturas são nulas.
+ */
 Hexa **init_grid(int altura, int largura){
   Hexa **matriz = (Hexa**) malloc(altura*sizeof(Hexa*));
   for(int i = 0; i < altura; i++)
@@ -109,39 +133,9 @@ Hexa **init_grid(int altura, int largura){
   return matriz;
 }
 
-void print_matrix(Hexa** matrix, int altura, int largura){
-  for(int i = 0; i < altura; i++ ){
-    for(int j = 0; j < largura; j++){
-      if(matrix[i][j].joaninha)
-        printf("* ");
-      else if(matrix[i][j].calor)
-        printf("+ ");
-      else if(matrix[i][j].frio)
-        printf("- ");
-      else
-        printf(". ");
-    }
-    printf("\n");
-  }
-}
-
-void print_matrix2(Hexa** matrix, int altura, int largura){
-  for(int i = 0; i < altura; i++ ){
-    for(int j = 0; j < largura; j++){
-      if(matrix[j][i].joaninha)
-        printf("* ");
-      else if(matrix[j][i].calor)
-        printf("+ ");
-      else if(matrix[j][i].frio)
-        printf("- ");
-      else
-        printf(". ");
-    }
-    printf("\n");
-  }
-}
-
-
+  /*
+    coloca_joaninha: Posiciona joaninha na matriz aleatoriamente.
+   */
 void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
   srand(seed_gb);
   for(int i  =  0; i < num_j; ){
@@ -161,6 +155,11 @@ void coloca_joaninha(Hexa** matrix, int altura, int largura, int num_j){
     }
   }
 }
+
+/*
+  coloca_fonte: Posiciona fontes de calor e frio na matriz aleatoriamente baseado nas probabilidades
+  fornecidas.
+ */
 
 void coloca_fonte(Hexa** matrix, int altura, int largura, double p, int t,double calor){
   for(int i = 0; i < altura; i++){
@@ -200,7 +199,10 @@ double dist_euclidiana(Hexa** m, int i, int j, int k, int l){
   return fabs((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
 }
 
-
+/*
+  temp_hex: Dado uma matriz m e uma posição (i, j), temp_hex calcula a temperatura nessa posicao
+  com base na formula cte/r^2, com r = distancia entre (i,j) e todos os pontos da matriz.
+ */
 double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
   double temp_h = 0;
   Joaninha* jojo;
@@ -224,14 +226,11 @@ double temp_hex(Hexa**m, int alt, int lar, int i, int j, double cte){
   return temp_h;
 }
 
-void print_temps(Hexa** m, int altura, int largura){
-  for(int i = 0; i < altura; i++){
-    for(int j = 0; j < largura; j++)
-      printf("%+.2le ", m[i][j].temperatura);
-    printf("\n");
-  }
-}
-
+/*
+  move_joaninha: Dada uma joaninha em joanas, essa funcao escolhe um vizinho com temperatura 
+  mais agradável e adiciona tal possibilidade de movimentação para que seja utilizada em
+  "resolve_movimentos"
+ */
 
 void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
   Joaninha* jojo = joanas[index];
@@ -303,6 +302,10 @@ void move_joaninha(Hexa** m, int alt, int lar, int index, double cte){
 
 }
 
+/*
+  remove_fontes_esgotadas: Remove fontes esgotadas conforme o valor em "ciclos_ativa"
+ */
+
 void remove_fontes_esgotadas(Hexa** m){
   for (unsigned int i = 0; i < gelo_e_fogo.size(); i++) {
     gelo_e_fogo[i]->ciclos_ativa--;
@@ -318,6 +321,10 @@ void remove_fontes_esgotadas(Hexa** m){
   }
 }
 
+/*
+  resolve_movimentos: Escolhes os melhores candidatos chamando "move_joaninha" e em 
+  seguida move as joaninhas escolhidas.
+ */
 void resolve_movimentos(Hexa** m, int alt, int lar, double cte){
   #pragma omp parallel for schedule(dynamic)
   for(unsigned int i = 0; i < joanas.size(); i++)
@@ -343,13 +350,15 @@ void resolve_movimentos(Hexa** m, int alt, int lar, double cte){
 
 }
 
+/*
+  init_Screen: Imprime na tela de maneira "bonita" a grid hexagonal.
+*/
 
 void init_Screen(int mapHeight, int mapWidth, Hexa** matriz){
   // Cuidado, coordenadas x y são invertidas para printar
   int m = mapWidth*4+2;
   int n = mapHeight*7 + 3;
             
-  //reen = new char[m][n];
   char** screen = new char*[m];
   for (int i = 0; i < m; i++){
     screen[i] = new char[n];
@@ -472,9 +481,10 @@ int main(int argc, char** argv){
 
   int c;
   bool v = false;
-  char* nomeArquivo;
+  char buffer = 'a';
+  char* nomeArquivo = &buffer ;
 
-  if(argc != 15){
+  if(argc < 15 || argc > 16){
     printf("Numero invalido de argumentos!\n");
     exit(-1);
   }
